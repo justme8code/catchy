@@ -64,18 +64,28 @@ Behind the scenes, `Catchy` handles retries via a loop, applying delay between a
 
 ## 📦 Installation
 
-Add the source directly to your project, or package it as a local library.
-
-If using Maven:
+If you're using **JitPack**, add this to your `pom.xml`:
 
 ```xml
-<!-- coming soon: groupId/artifactId for a maven package -->
-<dependency>
-  <groupId>com.thompson.utils</groupId>
-  <artifactId>catchy</artifactId>
-  <version>1.0.0</version>
-</dependency>
+<repositories>
+  <repository>
+    <id>jitpack.io</id>
+    <url>https://jitpack.io</url>
+  </repository>
+</repositories>
+
+<dependencies>
+  <dependency>
+    <groupId>com.github.justme8code</groupId>
+    <artifactId>catchy</artifactId>
+    <version>v1.0.0</version>
+  </dependency>
+</dependencies>
 ```
+
+Or you can add the source directly to your project if you prefer.
+
+[![](https://jitpack.io/v/justme8code/catchy.svg)](https://jitpack.io/#justme8code/catchy)
 
 ---
 
