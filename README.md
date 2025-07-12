@@ -164,6 +164,25 @@ Result<String> result = TryWrapper.tryCatch(() -> fetchFromServer())
 
 ---
 
+## 📣 From the Author
+
+I got tired of noisy `try/catch` blocks in Java. So I built Catchy — a tiny wrapper that:
+
+* Reduces boilerplate
+* Adds retry logic with optional backoff
+* Supports recovery strategies (`.recover()`)
+* Gives you a sweet `.onSuccess()` / `.onFailure()` API
+* Logs errors using SLF4J (with auto log levels!)
+
+Think `Try` from FP (functional programming), but practical and designed for real-world Java.
+
+GitHub: [github.com/justme8code/catchy](https://github.com/justme8code/catchy)
+JitPack: [jitpack.io/#justme8code/catchy](https://jitpack.io/#justme8code/catchy)
+
+If you’ve ever written the same `try/catch` five times in a day — this one’s for you.
+
+---
+
 ## 🔮 Roadmap
 
 * [ ] Custom exception types
@@ -177,6 +196,8 @@ Result<String> result = TryWrapper.tryCatch(() -> fetchFromServer())
 
 Think of `Catchy` like Java’s `Try` from functional programming, but cleaner and closer to how developers *actually* work with exceptions day-to-day.
 
+
+---
 
 ## 📏 Philosophy
 
