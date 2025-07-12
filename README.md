@@ -176,3 +176,11 @@ Result<String> result = TryWrapper.tryCatch(() -> fetchFromServer())
 ## 🧠 Inspiration
 
 Think of `Catchy` like Java’s `Try` from functional programming, but cleaner and closer to how developers *actually* work with exceptions day-to-day.
+
+
+## 📏 Philosophy
+
+`Catchy` is intentionally small — fewer than 500 lines of core logic.
+
+Because great developer tools don’t have to be big.  
+They just have to *make you write less code* and *think more clearly*.
