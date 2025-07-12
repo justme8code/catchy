@@ -24,6 +24,7 @@ In Java, handling exceptions can be noisy. `Catchy` brings clarity.
 * Logging uses SLF4J and will smartly detect the severity level based on the type of exception.
 * Recovery is configurable with fallbacks from supplier, value, or message.
 * Retry logic lets you retry operations with optional exponential backoff and delay.
+* Bonus: You can transform success values using `.map()` — like `Optional.map()` but safer.
 
 Behind the scenes, `Catchy` handles retries via a loop, applying delay between attempts and catching exceptions along the way. The final result is always wrapped in a `Result<T>` object so you don’t need to write messy try/catch blocks everywhere.
 
@@ -57,7 +58,7 @@ Behind the scenes, `Catchy` handles retries via a loop, applying delay between a
          +-----------------------+
                      |
                      v
-        Optional: .recover(), .logIfFailure()
+   Optional: .recover(), .logIfFailure(), .map()
 ```
 
 ---
@@ -125,6 +126,20 @@ TryWrapper.tryCatch(() -> mightFail())
 
 ---
 
+## 🔄 Transform with map
+
+You can safely transform a successful result using `.map()`:
+
+```java
+TryWrapper.tryCatch(() -> 5)
+    .map(val -> val * 2) // Result<Integer> = 10
+    .onSuccess(System.out::println);
+```
+
+If an exception is thrown inside the `map()` function, it’s caught and returned as a failure.
+
+---
+
 ## 📓 Logging (SLF4J)
 
 ```java
@@ -172,6 +187,7 @@ I got tired of noisy `try/catch` blocks in Java. So I built Catchy — a tiny wr
 * Adds retry logic with optional backoff
 * Supports recovery strategies (`.recover()`)
 * Gives you a sweet `.onSuccess()` / `.onFailure()` API
+* Transforms values safely with `.map()`
 * Logs errors using SLF4J (with auto log levels!)
 
 Think `Try` from FP (functional programming), but practical and designed for real-world Java.
@@ -195,7 +211,6 @@ If you’ve ever written the same `try/catch` five times in a day — this one�
 ## 🧠 Inspiration
 
 Think of `Catchy` like Java’s `Try` from functional programming, but cleaner and closer to how developers *actually* work with exceptions day-to-day.
-
 
 ---
 
