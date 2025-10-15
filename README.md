@@ -230,7 +230,7 @@ It explains the new feature clearly, includes code examples, and matches your pr
 
 ### Overview
 
-As of version **vX.X.X**, `TryWrapper` now supports *context-aware* try–catch operations — allowing you to safely work with external data inside retryable, exception-handling blocks.
+As of version **v1.1.X**, `TryWrapper` now supports *context-aware* try–catch operations — allowing you to safely work with external data inside retryable, exception-handling blocks.
 
 These additions make it easier to:
 
