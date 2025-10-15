@@ -1,71 +1,58 @@
-# 🎣 Catchy 🌣️
+# 🎣 Catchy
 
-> A lightweight Java utility to replace repetitive try/catch blocks with clean, fluent, retryable error handling — with optional logging and recovery.
+> Exception handling in Java, but make it clean.
+
+[![JitPack](https://jitpack.io/v/justme8code/catchy.svg)](https://jitpack.io/#justme8code/catchy)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**Catchy** is a lightweight Java utility that eliminates repetitive `try-catch` blocks with fluent, retryable error handling — complete with smart logging, recovery strategies, and automatic resource management.
+
+Stop writing boilerplate. Start catching exceptions gracefully.
 
 ---
 
 ## 💡 Why Catchy?
 
-In Java, handling exceptions can be noisy. `Catchy` brings clarity.
+Java's exception handling is powerful but verbose. Catchy brings clarity without sacrificing control.
 
-* ✅ Minimal boilerplate
-* 🔁 Built-in retry with optional backoff
-* 🔥 Smart SLF4J logging
-* ♻️ Transform and recover from exceptions
-* ✨ Chainable, expressive, readable
-
-### How it works
-
-`Catchy` is powered by a fluent interface (`TryWrapper`) and a result container (`Result<T>`), making exception handling composable, type-safe, and flexible.
-
-* You wrap risky code inside `TryWrapper.tryCatch(() -> ...)`, and it returns a `Result<T>`.
-* That `Result<T>` will either hold the **value** or the **exception**.
-* You can then **chain** behavior like `.recover()`, `.logIfFailure()`, `.onSuccess()` or `.onFailure()`.
-* Logging uses SLF4J and will smartly detect the severity level based on the type of exception.
-* Recovery is configurable with fallbacks from supplier, value, or message.
-* Retry logic lets you retry operations with optional exponential backoff and delay.
-* Bonus: You can transform success values using `.map()` — like `Optional.map()` but safer.
-
-Behind the scenes, `Catchy` handles retries via a loop, applying delay between attempts and catching exceptions along the way. The final result is always wrapped in a `Result<T>` object so you don’t need to write messy try/catch blocks everywhere.
-
-### ASCII Diagram
-
-```text
-       +----------------------------+
-       |      Risky Code Block     |
-       |   () -> doSomething()     |
-       +----------------------------+
-                     |
-                     v
-         +-----------------------+
-         |    tryCatch() wraps   |
-         +-----------------------+
-                     |
-         +-----------+-----------+
-         |                       |
-         v                       v
-+------------------+    +------------------+
-|  Success Result  |    | Failure Result   |
-|  result.value    |    | result.exception |
-+------------------+    +------------------+
-         |                       |
-         v                       v
-   .onSuccess(...)         .onFailure(...)
-         |                       |
-         v                       v
-  your success logic     your error logic
-         |                       |
-         +-----------------------+
-                     |
-                     v
-   Optional: .recover(), .logIfFailure(), .map()
+**Before Catchy:**
+```java
+try (var input = Files.newInputStream(path)) {
+    String content = new String(input.readAllBytes());
+    return processContent(content);
+} catch (IOException e) {
+    LOGGER.error("Failed to read file", e);
+    return "default";
+}
 ```
+
+**After Catchy:**
+```java
+TryWrapper.tryCatch(() ->
+    Catchy.autoClose(Files.newInputStream(path), input ->
+        processContent(new String(input.readAllBytes()))
+    )
+)
+.logIfFailure(LOGGER)
+.recover(() -> "default")
+.get();
+```
+
+### What You Get
+
+- 🧹 **Zero boilerplate** - No more `try-catch` noise
+- 🔁 **Smart retries** - Built-in retry with exponential backoff
+- 🔥 **Auto logging** - SLF4J integration with intelligent log levels
+- ♻️ **Recovery modes** - Transform and recover from failures elegantly
+- 🎯 **Type-safe** - Full generic support with `Result<T>` container
+- 🧰 **Resource-safe** - Automatic cleanup with `autoClose()`
+- ✨ **Fluent API** - Chainable, expressive, readable
 
 ---
 
 ## 📦 Installation
 
-If you're using **JitPack**, add this to your `pom.xml`:
+### Maven (via JitPack)
 
 ```xml
 <repositories>
@@ -79,407 +66,394 @@ If you're using **JitPack**, add this to your `pom.xml`:
   <dependency>
     <groupId>com.github.justme8code</groupId>
     <artifactId>catchy</artifactId>
-    <version>v1.0.0</version>
+    <version>v1.1.3</version>
   </dependency>
 </dependencies>
 ```
 
-Or you can add the source directly to your project if you prefer.
+### Gradle
 
-[![](https://jitpack.io/v/justme8code/catchy.svg)](https://jitpack.io/#justme8code/catchy)
+```gradle
+repositories {
+    maven { url 'https://jitpack.io' }
+}
 
----
-
-## 🚀 Usage
-
-### Basic Try-Catch
-
-```java
-Result<String> result = TryWrapper.tryCatch(() -> riskyCode());
-
-result.onSuccess(val -> System.out.println("Yay: " + val))
-      .onFailure(err -> System.err.println("Oops: " + err.getMessage()));
-```
-
-### Retry with backoff
-
-```java
-TryWrapper.tryCatch(() -> connectToService(), 3);
-```
-
-### Retry + backoff + delay
-
-```java
-TryWrapper.tryCatch(() -> fetch(), null, 5, 100, true);
+dependencies {
+    implementation 'com.github.justme8code:catchy:v1.1.3'
+}
 ```
 
 ---
 
-## 💠 Recovery
+## 🚀 Quick Start
+
+### Basic Exception Handling
 
 ```java
-TryWrapper.tryCatch(() -> mightFail())
-    .recover(() -> "default value")         // from supplier
-    .recoverWithValue("safe fallback")      // static value
-    .recoverWithMessage("fallback msg");    // mostly for Strings
+Result<String> result = TryWrapper.tryCatch(() -> riskyOperation());
+
+result
+    .onSuccess(val -> System.out.println("Success: " + val))
+    .onFailure(err -> System.err.println("Error: " + err.getMessage()));
+```
+
+### With Retry
+
+```java
+// Retry up to 3 times
+TryWrapper.tryCatch(() -> connectToDatabase(), 3);
+
+// Retry with exponential backoff
+TryWrapper.tryCatch(
+    () -> fetchFromAPI(),
+    null,   // exception transformer
+    5,      // max retries
+    100,    // initial delay (ms)
+    true    // use exponential backoff
+);
+```
+
+### Recovery Strategies
+
+```java
+String result = TryWrapper.tryCatch(() -> fetchUserName())
+    .recover(() -> "Guest")                    // supplier
+    .recoverWithValue("Anonymous")             // static value
+    .recoverWithMessage("Unknown User")        // message-based
+    .get();
+```
+
+### Transform Values Safely
+
+```java
+TryWrapper.tryCatch(() -> "42")
+    .map(Integer::parseInt)
+    .map(n -> n * 2)
+    .onSuccess(n -> System.out.println("Result: " + n)) // 84
+    .onFailure(err -> System.err.println("Parse failed"));
 ```
 
 ---
 
-## 🔄 Transform with map
+## 🌟 Key Features
 
-You can safely transform a successful result using `.map()`:
+### 1. Resource Management (v1.1.3)
+
+Automatically close resources without `try-with-resources`:
 
 ```java
-TryWrapper.tryCatch(() -> 5)
-    .map(val -> val * 2) // Result<Integer> = 10
-    .onSuccess(System.out::println);
+TryWrapper.tryCatch(() ->
+    Catchy.autoClose(new FileInputStream("data.txt"), input ->
+        new String(input.readAllBytes())
+    )
+)
+.onSuccess(content -> LOGGER.info("Loaded: {}", content))
+.onFailure(err -> LOGGER.error("Failed to load", err));
 ```
 
-If an exception is thrown inside the `map()` function, it’s caught and returned as a failure.
+Works with any `AutoCloseable` resource:
+- `InputStream`, `OutputStream`
+- `Reader`, `Writer`
+- Database connections
+- Custom resources
+
+### 2. Checked Exception Support (v1.1.2)
+
+Handle checked exceptions without wrapping in `try-catch`:
+
+```java
+TryWrapper.tryCatch(() -> {
+    // Checked exceptions work seamlessly
+    return Files.readString(Path.of("config.json"));
+})
+.map(json -> parseJson(json))
+.onFailure(err -> LOGGER.error("Config load failed", err))
+.recover(() -> "{}");
+```
+
+### 3. External Data Operations (v1.1.1)
+
+#### Mutate External Objects
+
+```java
+List<FileResult> results = new ArrayList<>();
+
+TryWrapper.tryCatchInput(results, list -> {
+    String hash = computeHash(file);
+    list.add(new FileResult(hash, fileName, file));
+});
+```
+
+#### Transform Input to Output
+
+```java
+var result = TryWrapper.tryCatchFunction(
+    userRequest,
+    this::processRequest
+);
+
+result.onSuccess(response -> sendResponse(response));
+```
+
+### 4. Smart Logging
+
+Automatic SLF4J integration with context-aware log levels:
+
+```java
+TryWrapper.tryCatch(() -> riskyOperation())
+    .logIfFailure(LOGGER);
+```
+
+**Auto log levels:**
+
+| Exception Type             | Log Level |
+|---------------------------|-----------|
+| `NullPointerException`     | WARN      |
+| `IllegalArgumentException` | WARN      |
+| `RuntimeException`         | ERROR     |
+| Other exceptions           | INFO      |
+
+**Manual control:**
+
+```java
+result.logWarnIfFailure(LOGGER, "Recoverable error occurred");
+result.logInfoIfFailure(LOGGER, "Minor issue detected");
+result.logIfFailure(LOGGER, "Critical failure", false); // force ERROR
+```
 
 ---
 
-## 📓 Logging (SLF4J)
+## 🧩 API Reference
+
+### Core Methods
+
+#### `tryCatch()`
 
 ```java
-TryWrapper.tryCatch(() -> riskyCall())
-    .logIfFailure(logger)
-    .onFailure(err -> System.out.println("Something went wrong"));
+// Basic usage
+Result<T> tryCatch(ThrowingSupplier<T> supplier)
+
+// With retries
+Result<T> tryCatch(ThrowingSupplier<T> supplier, int maxRetries)
+
+// Full configuration
+Result<T> tryCatch(
+    ThrowingSupplier<T> supplier,
+    ExceptionTransformer transformer,
+    int maxRetries,
+    long delayMs,
+    boolean useBackoff
+)
 ```
 
-### Auto log levels:
-
-| Exception Type             | Level   |
-| -------------------------- | ------- |
-| `NullPointerException`     | `WARN`  |
-| `IllegalArgumentException` | `WARN`  |
-| `RuntimeException`         | `ERROR` |
-| Anything else              | `INFO`  |
-
-Manual control:
+#### `tryCatchInput()`
 
 ```java
-result.logWarnIfFailure(logger, "This is bad but recoverable");
-result.logInfoIfFailure(logger, "Just so you know...");
-result.logIfFailure(logger, "Fully custom msg", false); // always logs as ERROR
+// Mutate external data
+Result<Void> tryCatchInput(I input, Consumer<I> consumer)
+
+// With retries
+Result<Void> tryCatchInput(
+    I input,
+    Consumer<I> consumer,
+    ExceptionTransformer transformer,
+    int maxRetries,
+    long delayMs,
+    boolean useBackoff
+)
+```
+
+#### `tryCatchFunction()`
+
+```java
+// Transform input to output
+Result<O> tryCatchFunction(I input, Function<I, O> function)
+
+// With retries
+Result<O> tryCatchFunction(
+    I input,
+    Function<I, O> function,
+    ExceptionTransformer transformer,
+    int maxRetries,
+    long delayMs,
+    boolean useBackoff
+)
+```
+
+### Result Methods
+
+#### Success & Failure Handling
+
+```java
+result.onSuccess(Consumer<T> consumer)      // Execute on success
+result.onFailure(Consumer<Exception> consumer) // Execute on failure
+result.get()                                // Unwrap value (throws if failed)
+result.orElse(T defaultValue)              // Get value or default
+result.isSuccess()                          // Check if successful
+result.isFailure()                          // Check if failed
+```
+
+#### Recovery
+
+```java
+result.recover(Supplier<T> fallback)        // Recover with supplier
+result.recoverWithValue(T value)            // Recover with static value
+result.recoverWithMessage(String message)   // Recover with message (String only)
+```
+
+#### Transformation
+
+```java
+result.map(Function<T, R> mapper)           // Transform success value
+```
+
+#### Logging
+
+```java
+result.logIfFailure(Logger logger)
+result.logWarnIfFailure(Logger logger, String message)
+result.logInfoIfFailure(Logger logger, String message)
+result.logIfFailure(Logger logger, String message, boolean useSmartLevel)
+```
+
+### Utility Methods
+
+#### `Catchy.autoClose()`
+
+```java
+// Automatic resource management
+T autoClose(R resource, ThrowingFunction<R, T> function)
 ```
 
 ---
 
-## ✅ Example
+## 📖 Real-World Examples
+
+### File Processing with Retry
 
 ```java
-Result<String> result = TryWrapper.tryCatch(() -> fetchFromServer())
-    .recover(() -> "default-value")
-    .logIfFailure(logger)
-    .onSuccess(val -> System.out.println("Got: " + val))
-    .onFailure(err -> System.err.println("Still failed: " + err.getMessage()));
+var result = TryWrapper.tryCatch(
+    () -> Catchy.autoClose(
+        Files.newInputStream(filePath),
+        input -> processFileStream(input)
+    ),
+    null,   // no transformer
+    3,      // retry 3 times
+    500,    // 500ms initial delay
+    true    // exponential backoff
+);
+
+result
+    .logIfFailure(LOGGER)
+    .onSuccess(data -> LOGGER.info("Processed {} records", data.size()))
+    .onFailure(err -> notifyAdmin("File processing failed", err));
+```
+
+### Database Operation with Recovery
+
+```java
+User user = TryWrapper.tryCatch(() -> userRepository.findById(userId))
+    .recover(() -> userRepository.findByEmail(email))
+    .recoverWithValue(User.guest())
+    .logIfFailure(LOGGER)
+    .get();
+```
+
+### API Call with Transformation
+
+```java
+TryWrapper.tryCatch(() -> httpClient.fetch(apiUrl))
+    .map(response -> response.body())
+    .map(json -> objectMapper.readValue(json, ApiResponse.class))
+    .map(ApiResponse::getData)
+    .onSuccess(data -> cache.put(cacheKey, data))
+    .onFailure(err -> LOGGER.warn("API call failed, using stale cache"))
+    .recover(() -> cache.get(cacheKey))
+    .get();
+```
+
+### Batch Processing with Context
+
+```java
+List<ProcessedFile> results = new ArrayList<>();
+
+files.forEach(file -> {
+    TryWrapper.tryCatchInput(results, list -> {
+        String content = Catchy.autoClose(
+            Files.newInputStream(file),
+            input -> new String(input.readAllBytes())
+        );
+        String hash = computeHash(content);
+        list.add(new ProcessedFile(file.getName(), hash, content.length()));
+    })
+    .logIfFailure(LOGGER);
+});
 ```
 
 ---
 
-## 📣 From the Author
+## 🎯 Design Philosophy
 
-I got tired of noisy `try/catch` blocks in Java. So I built Catchy — a tiny wrapper that:
+### Small by Design
 
-* Reduces boilerplate
-* Adds retry logic with optional backoff
-* Supports recovery strategies (`.recover()`)
-* Gives you a sweet `.onSuccess()` / `.onFailure()` API
-* Transforms values safely with `.map()`
-* Logs errors using SLF4J (with auto log levels!)
+Catchy's core logic is **under 500 lines**. Great tools don't need to be complex — they just need to make you write less code and think more clearly.
 
-Think `Try` from FP (functional programming), but practical and designed for real-world Java.
+### Functional but Practical
 
-GitHub: [github.com/justme8code/catchy](https://github.com/justme8code/catchy)
-JitPack: [jitpack.io/#justme8code/catchy](https://jitpack.io/#justme8code/catchy)
+Inspired by functional programming's `Try` monad, but designed for everyday Java development. Catchy bridges the gap between FP elegance and Java pragmatism.
 
-If you’ve ever written the same `try/catch` five times in a day — this one’s for you.
+### Zero-Compromise Safety
+
+- Type-safe generics throughout
+- Automatic resource cleanup
+- Exception information preserved
+- No hidden behavior or magic
 
 ---
 
 ## 🔮 Roadmap
 
-* [ ] Custom exception types
-* [ ] Async version (not planned but possible)
-* [ ] Gradle/Maven deploy
-* [ ] `throwIfFailure()` and sealed `Result`
+- [ ] Custom exception type filters
+- [ ] Async/reactive support (exploration phase)
+- [ ] Enhanced retry policies (jitter, custom backoff strategies)
+- [ ] `throwIfFailure()` for explicit error propagation
+- [ ] Sealed `Result` types (when available)
+- [ ] Performance benchmarks and optimizations
 
 ---
 
-## 🧠 Inspiration
+## 🤝 Contributing
 
-Think of `Catchy` like Java’s `Try` from functional programming, but cleaner and closer to how developers *actually* work with exceptions day-to-day.
+Contributions are welcome! Please feel free to submit issues or pull requests.
 
----
-
-## 📏 Philosophy
-
-`Catchy` is intentionally small — fewer than 500 lines of core logic.
-
-Because great developer tools don’t have to be big.  
-They just have to *make you write less code* and *think more clearly*.
-
-Absolutely ✅ — here’s a **well-structured README section** you can drop right into your existing documentation.
-It explains the new feature clearly, includes code examples, and matches your project’s tone and structure.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
-## 🔹 New Feature: External Data Support (`tryCatchInput` & `tryCatchFunction`)
+## 📄 License
 
-### Overview
-
-As of version **v1.1.X**, `TryWrapper` now supports *context-aware* try–catch operations — allowing you to safely work with external data inside retryable, exception-handling blocks.
-
-These additions make it easier to:
-
-* Mutate external objects (e.g., lists, maps, counters, etc.) inside a `tryCatch`
-* Pass inputs to functions and receive typed outputs
-* Maintain full `TryWrapper` features — retries, delay, backoff, and exception transformation
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-### 🧰 New Methods
+## 🐟 From the Author
 
-#### 1. `tryCatchInput`
+I built Catchy because I got tired of writing the same `try-catch` blocks over and over. Java's exception handling is powerful, but it shouldn't require 10 lines of boilerplate every single time.
 
-Safely execute a block of code that consumes and mutates external data.
+Catchy is my answer: a tiny library that makes exception handling feel natural, not ceremonial.
 
-```java
-public static <I> Result<Void> tryCatchInput(I input, Consumer<I> consumer)
-```
+If you've ever written the same `try-catch` five times in a day — this one's for you.
 
-**Use this when:**
-You want to perform an operation that *updates* or *modifies* an existing object, such as adding items to a list or updating a cache.
-
-**Example:**
-
-```java
-TryWrapper.tryCatchInput(filePreparationResults, list -> {
-    String hash = PdfFileUtil.computeSha256(new FileSystemResource(cleanedFile));
-    var newFileResult = new FilePreparationResult(hash, originalName, originalRes, cleanedFile);
-    list.add(newFileResult);
-});
-```
-
-**With retries and exponential backoff:**
-
-```java
-TryWrapper.tryCatchInput(
-    filePreparationResults,
-    list -> {
-        list.add(fetchRemoteData());
-    },
-    null,     // optional ExceptionTransformer
-    3,        // retries
-    500,      // delayMs
-    true      // useBackoff
-);
-```
-
-✅ **Why use it**
-
-* Works around Java’s “effectively final” lambda rule
-* Lets you mutate data in a thread-safe, retry-safe way
-* Keeps your logic clean and declarative
+**Links:**
+- 🐙 GitHub: [github.com/justme8code/catchy](https://github.com/justme8code/catchy)
+- 📦 JitPack: [jitpack.io/#justme8code/catchy](https://jitpack.io/#justme8code/catchy)
 
 ---
 
-#### 2. `tryCatchFunction`
-
-A functional form of `tryCatch` that takes an input and returns an output.
-
-```java
-public static <I, O> Result<O> tryCatchFunction(I input, Function<I, O> function)
-```
-
-**Use this when:**
-You want to compute or transform data using a provided input.
-
-**Example:**
-
-```java
-var result = TryWrapper.tryCatchFunction(cleanedFile, file -> {
-    String hash = PdfFileUtil.computeSha256(new FileSystemResource(file));
-    return new FilePreparationResult(hash, originalName, originalRes, file);
-});
-
-result.onSuccess(filePreparationResults::add);
-```
-
-**With retries and delay:**
-
-```java
-var result = TryWrapper.tryCatchFunction(
-    userRequest,
-    this::processUserRequest,
-    null,  // ExceptionTransformer
-    2,     // retries
-    1000,  // delayMs
-    false  // useBackoff
-);
-```
-
-✅ **Why use it**
-
-* Clean, composable syntax for input→output transformations
-* Supports retries, delays, and exception transformers
-* Works seamlessly with `Result<T>` chaining (`onSuccess`, `onFailure`, `map`, etc.)
-
----
-
-### ⚙️ Exception Handling & Logging
-
-Both new methods integrate fully with `TryWrapper.Result<T>` — meaning you can still:
-
-```java
-result
-    .onFailure(e -> logger.error("Failed to process input", e))
-    .onSuccess(v -> logger.info("Processed successfully: {}", v))
-    .logIfFailure(logger);
-```
-
----
-
-### 🧩 When to Use Which
-
-| Use Case                                                   | Method             | Example                               |
-| ---------------------------------------------------------- | ------------------ | ------------------------------------- |
-| You need to mutate a collection, cache, or external object | `tryCatchInput`    | Add a processed item to a shared list |
-| You want to compute and return a result from an input      | `tryCatchFunction` | Transform a file into a new object    |
-| You don’t need external data, just run logic               | `tryCatch`         | Simple try/catch with retries         |
-| You’re running a `void` block                              | `tryCatchVoid`     | Execute side-effect operations only   |
-
----
-
-### ✅ Key Benefits
-
-* Eliminates “variable must be final or effectively final” issues
-* Cleaner handling of context-dependent logic
-* Fully integrated with retries, delay, and exception transformation
-* Preserves functional, chainable `Result<T>` API
-
----
-
-
-
-Ah — got it 💡
-You’re absolutely right — the *philosophy* of **Catchy** is to *eliminate* Java’s `try { ... } catch (...) { ... }` syntax entirely — not just make it safer.
-
-So the README should emphasize that **Catchy lets you write code that can throw checked exceptions without *ever* writing a try/catch block**, while still being type-safe and expressive.
-
-Let’s rewrite that section with that philosophy in mind — clear, developer-friendly, and consistent with your vision.
-
----
-
-## 🧩 No More `try-catch` — Now Works with Checked Exceptions (v1.1.2)
-
-Catchy’s goal has always been simple:
-
-> **Stop writing `try {}` / `catch {}` blocks in Java. Forever.**
-
-Until now, Java’s **checked exceptions** (like `IOException`, `SQLException`, etc.) still forced you to wrap code with extra boilerplate — which went against Catchy’s purpose.
-
-From **vX.X.X**, Catchy fully supports *checked exceptions* through new **throwing functional interfaces**.
-You can now write clean, fluent code without a single `try` or `catch`, even for file, network, or database operations.
-
----
-
-### ✅ Example — Before vs After
-
-#### ❌ Before (plain Java)
-
-```java
-try (var input = Files.newInputStream(path)) {
-    return new String(input.readAllBytes());
-} catch (IOException e) {
-    throw new FileReadException("Failed to read file", e);
-}
-```
-
-#### ✅ After (Catchy)
-
-```java
-TryWrapper.tryCatch(() -> {
-    try (var input = Files.newInputStream(path)) {
-        return new String(input.readAllBytes());
-    }
-})
-.onSuccess(content -> LOGGER.info("Loaded successfully"))
-.onFailure(err -> LOGGER.error("Read failed", err))
-.recover(() -> "default");
-```
-
-☑️ No `try`
-☑️ No `catch`
-☑️ Still handles checked exceptions correctly
-
----
-
-### ⚙️ How It Works
-
-Catchy introduces *throwing functional interfaces* that can throw checked exceptions — for example:
-
-```java
-@FunctionalInterface
-public interface ThrowingSupplier<T> {
-    T get() throws Exception;
-}
-```
-
-Then, `TryWrapper.tryCatch()` uses that interface:
-
-```java
-public static <T> Result<T> tryCatch(ThrowingSupplier<T> supplier) {
-    try {
-        return Result.success(supplier.get());
-    } catch (Exception e) {
-        return Result.failure(e);
-    }
-}
-```
-
-This simple change allows **any** checked exception to be caught internally — keeping the code around it clean and expressive.
-
----
-
-### 🧠 Why This Matters
-
-✅ **No boilerplate** — Catchy handles exceptions so you can focus on logic.
-✅ **Works everywhere** — File I/O, JDBC, reflection, etc.
-✅ **Fluent results** — Handle errors declaratively with `.onSuccess()`, `.onFailure()`, `.recover()`, `.retry()`, etc.
-✅ **Type-safe** — Catchy wraps exceptions without losing their type information.
-
----
-
-### ⚡ Example in Practice
-
-```java
-TryWrapper.tryCatch(() -> new FileInputStream("data.pdf"))
-    .map(FileInputStream::readAllBytes)
-    .map(String::new)
-    .onSuccess(content -> LOGGER.info("PDF loaded"))
-    .onFailure(err -> LOGGER.error("Failed to load PDF", err))
-    .recover(() -> "No content")
-    .get();
-```
-
-**Catchy** replaces Java’s error-handling ceremony with a single, fluent, chainable expression.
-
----
-
-### 🧩 Summary
-
-| Feature                    | Old Java           | Catchy                                          |
-| -------------------------- | ------------------ | ----------------------------------------------- |
-| Checked exception handling | Manual `try-catch` | Automatic                                       |
-| Boilerplate                | High               | None                                            |
-| Readability                | Verbose            | Fluent                                          |
-| Recovery options           | Manual logic       | `.recover()`, `.recoverWithValue()`, `.retry()` |
-| Reusability                | Low                | High                                            |
-
----
-
-Would you like me to include a **“Design Philosophy”** section for this new feature (explaining that Catchy intentionally abstracts Java’s exception model for readability and control)? It would make the README feel more like a framework manifesto — professional and clear about intent.
-
+<div align="center">
+Made with 🎣 by <a href="https://github.com/justme8code">@justme8code</a>
+</div>

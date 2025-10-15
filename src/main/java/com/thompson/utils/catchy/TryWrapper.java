@@ -19,6 +19,12 @@ public class TryWrapper {
     }
 
     @FunctionalInterface
+    public interface ThrowingFunction<T, R> {
+        R apply(T t) throws Exception;
+    }
+
+
+    @FunctionalInterface
     public interface VoidTryBlock {
         void run() throws TryBlockException;
     }
