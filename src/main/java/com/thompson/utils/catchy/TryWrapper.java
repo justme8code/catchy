@@ -10,12 +10,12 @@ public class TryWrapper {
 
     @FunctionalInterface
     public interface TryBlock<T> {
-        T run() throws Exception;
+        T run() throws TryBlockException;
     }
 
     @FunctionalInterface
     public interface VoidTryBlock {
-        void run() throws Exception;
+        void run() throws TryBlockException;
     }
 
     @FunctionalInterface
@@ -79,7 +79,7 @@ public class TryWrapper {
                         break;
                     }
                 } else {
-                    throw new RuntimeException(transformer != null ? transformer.transform(e) : e);
+                    throw new TryBlockException(transformer != null ? transformer.transform(e) : e);
                 }
             }
         }
@@ -202,11 +202,11 @@ public class TryWrapper {
             if (!isSuccess()) {
                 if (autoLevel) {
                     if (exception instanceof NullPointerException || exception instanceof IllegalArgumentException) {
-                        logger.warn("[WARN] " + customMessage, exception);
+                        logger.warn("[WARN] {} " ,customMessage, exception);
                     } else if (exception instanceof RuntimeException) {
-                        logger.error("[RUNTIME] " + customMessage, exception);
+                        logger.error("[RUNTIME] {} ", customMessage, exception);
                     } else {
-                        logger.info("[INFO] " + customMessage, exception);
+                        logger.info("[INFO] {} ", customMessage, exception);
                     }
                 } else {
                     logger.error(customMessage, exception);
@@ -215,4 +215,43 @@ public class TryWrapper {
             return this;
         }
     }
+
+
+
+    // NEW: tryCatchFunction() — input -> output functional form
+    public static <I, O> Result<O> tryCatchFunction(I input, Function<I, O> function) {
+        return tryCatchFunction(input, function, null, 0, 0, false);
+    }
+
+    public static <I, O> Result<O> tryCatchFunction(I input, Function<I, O> function, int retries) {
+        return tryCatchFunction(input, function, null, retries, 0, false);
+    }
+
+    public static <I, O> Result<O> tryCatchFunction(I input, Function<I, O> function,
+                                                    ExceptionTransformer transformer,
+                                                    int retries, long delayMs, boolean useBackoff) {
+        Exception lastException = null;
+
+        for (int attempt = 1; attempt <= retries + 1; attempt++) {
+            try {
+                return Result.success(function.apply(input));
+            } catch (Exception e) {
+                lastException = e;
+
+                if (attempt <= retries) {
+                    long sleepTime = useBackoff ? (long) Math.pow(2, attempt - 1) * delayMs : delayMs;
+                    try {
+                        Thread.sleep(sleepTime);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+
+        Exception finalEx = transformer != null ? transformer.transform(lastException) : lastException;
+        return Result.failure(finalEx);
+    }
+
 }

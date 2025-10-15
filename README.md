@@ -220,3 +220,144 @@ Think of `Catchy` like Java’s `Try` from functional programming, but cleaner a
 
 Because great developer tools don’t have to be big.  
 They just have to *make you write less code* and *think more clearly*.
+
+Absolutely ✅ — here’s a **well-structured README section** you can drop right into your existing documentation.
+It explains the new feature clearly, includes code examples, and matches your project’s tone and structure.
+
+---
+
+## 🔹 New Feature: External Data Support (`tryCatchInput` & `tryCatchFunction`)
+
+### Overview
+
+As of version **vX.X.X**, `TryWrapper` now supports *context-aware* try–catch operations — allowing you to safely work with external data inside retryable, exception-handling blocks.
+
+These additions make it easier to:
+
+* Mutate external objects (e.g., lists, maps, counters, etc.) inside a `tryCatch`
+* Pass inputs to functions and receive typed outputs
+* Maintain full `TryWrapper` features — retries, delay, backoff, and exception transformation
+
+---
+
+### 🧰 New Methods
+
+#### 1. `tryCatchInput`
+
+Safely execute a block of code that consumes and mutates external data.
+
+```java
+public static <I> Result<Void> tryCatchInput(I input, Consumer<I> consumer)
+```
+
+**Use this when:**
+You want to perform an operation that *updates* or *modifies* an existing object, such as adding items to a list or updating a cache.
+
+**Example:**
+
+```java
+TryWrapper.tryCatchInput(filePreparationResults, list -> {
+    String hash = PdfFileUtil.computeSha256(new FileSystemResource(cleanedFile));
+    var newFileResult = new FilePreparationResult(hash, originalName, originalRes, cleanedFile);
+    list.add(newFileResult);
+});
+```
+
+**With retries and exponential backoff:**
+
+```java
+TryWrapper.tryCatchInput(
+    filePreparationResults,
+    list -> {
+        list.add(fetchRemoteData());
+    },
+    null,     // optional ExceptionTransformer
+    3,        // retries
+    500,      // delayMs
+    true      // useBackoff
+);
+```
+
+✅ **Why use it**
+
+* Works around Java’s “effectively final” lambda rule
+* Lets you mutate data in a thread-safe, retry-safe way
+* Keeps your logic clean and declarative
+
+---
+
+#### 2. `tryCatchFunction`
+
+A functional form of `tryCatch` that takes an input and returns an output.
+
+```java
+public static <I, O> Result<O> tryCatchFunction(I input, Function<I, O> function)
+```
+
+**Use this when:**
+You want to compute or transform data using a provided input.
+
+**Example:**
+
+```java
+var result = TryWrapper.tryCatchFunction(cleanedFile, file -> {
+    String hash = PdfFileUtil.computeSha256(new FileSystemResource(file));
+    return new FilePreparationResult(hash, originalName, originalRes, file);
+});
+
+result.onSuccess(filePreparationResults::add);
+```
+
+**With retries and delay:**
+
+```java
+var result = TryWrapper.tryCatchFunction(
+    userRequest,
+    this::processUserRequest,
+    null,  // ExceptionTransformer
+    2,     // retries
+    1000,  // delayMs
+    false  // useBackoff
+);
+```
+
+✅ **Why use it**
+
+* Clean, composable syntax for input→output transformations
+* Supports retries, delays, and exception transformers
+* Works seamlessly with `Result<T>` chaining (`onSuccess`, `onFailure`, `map`, etc.)
+
+---
+
+### ⚙️ Exception Handling & Logging
+
+Both new methods integrate fully with `TryWrapper.Result<T>` — meaning you can still:
+
+```java
+result
+    .onFailure(e -> logger.error("Failed to process input", e))
+    .onSuccess(v -> logger.info("Processed successfully: {}", v))
+    .logIfFailure(logger);
+```
+
+---
+
+### 🧩 When to Use Which
+
+| Use Case                                                   | Method             | Example                               |
+| ---------------------------------------------------------- | ------------------ | ------------------------------------- |
+| You need to mutate a collection, cache, or external object | `tryCatchInput`    | Add a processed item to a shared list |
+| You want to compute and return a result from an input      | `tryCatchFunction` | Transform a file into a new object    |
+| You don’t need external data, just run logic               | `tryCatch`         | Simple try/catch with retries         |
+| You’re running a `void` block                              | `tryCatchVoid`     | Execute side-effect operations only   |
+
+---
+
+### ✅ Key Benefits
+
+* Eliminates “variable must be final or effectively final” issues
+* Cleaner handling of context-dependent logic
+* Fully integrated with retries, delay, and exception transformation
+* Preserves functional, chainable `Result<T>` API
+
+---
