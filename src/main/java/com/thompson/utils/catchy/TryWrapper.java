@@ -216,6 +216,44 @@ public class TryWrapper {
         }
     }
 
+    // NEW: Use a Consumer with External Input
+    public static <I> Result<Void> tryCatchInput(I input, Consumer<I> consumer) {
+        return tryCatchInput(input, consumer, null, 0, 0, false);
+    }
+
+    public static <I> Result<Void> tryCatchInput(
+            I input,
+            Consumer<I> consumer,
+            ExceptionTransformer transformer,
+            int retries,
+            long delayMs,
+            boolean useBackoff
+    ) {
+        Exception lastException = null;
+
+        for (int attempt = 1; attempt <= retries + 1; attempt++) {
+            try {
+                consumer.accept(input);
+                return Result.success(null);
+            } catch (Exception e) {
+                lastException = e;
+
+                if (attempt <= retries) {
+                    long sleepTime = useBackoff ? (long) Math.pow(2, attempt - 1) * delayMs : delayMs;
+                    try {
+                        Thread.sleep(sleepTime);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+
+        Exception finalEx = transformer != null ? transformer.transform(lastException) : lastException;
+        return Result.failure(finalEx);
+    }
+
 
 
     // NEW: tryCatchFunction() — input -> output functional form
