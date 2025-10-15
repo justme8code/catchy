@@ -10,7 +10,12 @@ public class TryWrapper {
 
     @FunctionalInterface
     public interface TryBlock<T> {
-        T run() throws TryBlockException;
+        T run() throws Exception;
+    }
+
+    @FunctionalInterface
+    public interface ThrowingSupplier<T> {
+        T get() throws Exception;
     }
 
     @FunctionalInterface
@@ -37,6 +42,13 @@ public class TryWrapper {
 
     public static <T> Result<T> tryCatch(TryBlock<T> block, ExceptionTransformer transformer, int retries) {
         return tryCatch(block, transformer, retries, 0, false);
+    }
+    public static <T> Result<T> tryCatch(ThrowingSupplier<T> supplier) {
+        try {
+            return Result.success(supplier.get());
+        } catch (Exception e) {
+            return Result.failure(e);
+        }
     }
 
     public static <T> Result<T> tryCatch(TryBlock<T> block, ExceptionTransformer transformer, int retries, long delayMs, boolean useBackoff) {
